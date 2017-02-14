@@ -1,0 +1,164 @@
+
+
+System1.cs
+
+using System.Threading.Tasks;
+using Microsoft.ServiceFabric.Actors;
+using Microsoft.ServiceFabric.Actors.Runtime;
+using System1.Interfaces;
+
+namespace System1
+{
+    [StatePersistence(StatePersistence.Persisted)]
+    public class System1 : Actor, ISystem1
+    {
+
+        public AbstractState currentState;
+        public State1 state1;
+        public State2 state2;
+        public UnknownState unknownState;
+
+        public System1(ActorService actorService, ActorId actorId)
+            : base(actorService, actorId)
+        {
+            state1 = new State1(this);
+            state2 = new State2(this);
+            unknownState = new UnknownState(this);
+            this.currentState = this.unknownState;
+        }
+
+        Task<string> ISystem1.ToState1()
+        {
+            currentState.ToState1(this);
+            return Task.FromResult<string>(currentState.StateTitle);
+        }
+
+        Task<string> ISystem1.ToState2()
+        {
+            currentState.ToState2(this);
+            return Task.FromResult<string>(currentState.StateTitle);
+        }
+    }
+}
+
+
+namespace System1
+{
+    public abstract class AbstractState
+    {
+        public string StateTitle { get; set; }
+        public System1 sys;
+        public abstract void ToState1 (System1 sys);
+        public abstract void ToState2 (System1 sys);
+    }
+}
+
+namespace System1
+{
+    public class State1 : AbstractState
+
+    {
+        public State1(System1 sys)
+        {
+            this.StateTitle = "State1";
+            this.sys = sys;
+        }
+
+        public override void ToState1(System1 sys)
+        {
+            sys.currentState = sys.state1;
+        }
+
+        public override void ToState2(System1 sys)
+        {
+            sys.currentState = sys.state2;
+        }
+    }
+}
+
+
+namespace System1
+{
+    public class State2 : AbstractState
+    {
+        public State2(System1 sys)
+        {
+            this.StateTitle = "State2";
+            this.sys = sys;
+        }
+
+        public override void ToState1(System1 sys)
+        {
+            sys.currentState = sys.state1;
+        }
+
+        public override void ToState2(System1 sys)
+        {
+            sys.currentState = sys.state2;
+        }
+    }
+}
+
+namespace System1
+{
+    public class UnknownState : AbstractState
+    {
+        public UnknownState(System1 sys)
+        {
+            this.StateTitle = "Unknown State";
+            this.sys = sys;
+        }
+
+        public override void ToState1(System1 sys)
+        {
+            sys.currentState = sys.state1;
+        }
+
+        public override void ToState2(System1 sys)
+        {
+            sys.currentState = sys.state2;
+        }
+    }
+}
+
+using System.Threading.Tasks;
+using Microsoft.ServiceFabric.Actors;
+
+namespace System1.Interfaces
+{
+    public interface ISystem1 : IActor
+    {
+        Task<string> ToState1();
+        Task<string> ToState2();
+    }
+}
+
+using System;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.ServiceFabric.Actors;
+using System1.Interfaces;
+using Microsoft.ServiceFabric.Actors.Client;
+
+namespace Web1.Controllers
+{
+    [Route("api/[controller]")]
+    public class ValuesController : Controller
+    {
+        // GET api/values
+        [HttpGet]
+        public async Task<string> Get()
+        {
+
+            // Create a randomly distributed actor ID
+            ActorId actorId = ActorId.CreateRandom();
+
+            // This only creates a proxy object, it does not activate an actor or invoke any methods yet.
+            ISystem1 myActor = ActorProxy.Create<ISystem1>(actorId, new Uri("fabric:/Application5/System1ActorService"));
+
+            // This will invoke a method on the actor. If an actor with the given ID does not exist, it will be activated by this method call.
+            return await myActor.ToState2();
+
+        }
+    }
+}
